@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bavani ⇄ BA</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d17;
+    --violet: #8b5cf6;
+    --blue: #3b82f6;
+    --teal: #22d3ee;
+    --pink: #f472b6;
+    --glass: rgba(255,255,255,0.06);
+    --glass-border: rgba(255,255,255,0.14);
+    --text: #f5f3ff;
+    --text-soft: rgba(245,243,255,0.6);
+    --line: rgba(245,243,255,0.18);
+    --moss: #4ade80;
+    --rust: #fb7185;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-mono); overflow-x: hidden; min-height: 100vh; }
+
+  .bg-blobs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.55; }
+  .b1 { width: 420px; height: 420px; background: var(--violet); top: -100px; left: -80px; animation: drift1 22s ease-in-out infinite alternate; }
+  .b2 { width: 380px; height: 380px; background: var(--teal); bottom: -120px; right: -100px; animation: drift2 26s ease-in-out infinite alternate; }
+  .b3 { width: 300px; height: 300px; background: var(--pink); top: 30%; right: 10%; animation: drift3 19s ease-in-out infinite alternate; }
+  .b4 { width: 260px; height: 260px; background: var(--blue); bottom: 10%; left: 8%; animation: drift1 24s ease-in-out infinite alternate-reverse; }
+  @keyframes drift1 { from { transform: translate(0,0) scale(1); } to { transform: translate(60px,40px) scale(1.15); } }
+  @keyframes drift2 { from { transform: translate(0,0) scale(1); } to { transform: translate(-50px,-30px) scale(1.1); } }
+  @keyframes drift3 { from { transform: translate(0,0); } to { transform: translate(-40px,50px); } }
+
+  .pillnav {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; gap: 10px;
+    padding: 20px 28px;
+  }
+  .brand-mark {
+    font-family: var(--font-display); font-weight: 700; font-size: 16px;
+    background: linear-gradient(135deg, var(--violet), var(--teal));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .connect-pill {
+    margin-left: auto;
+    background: linear-gradient(135deg, var(--violet), var(--blue));
+    border: none; color: white; font-family: var(--font-mono); font-weight: 600;
+    font-size: 12.5px; padding: 10px 16px; border-radius: 999px; cursor: pointer;
+  }
+  .connect-pill:hover { filter: brightness(1.1); }
+
+  .hero { position: relative; z-index: 1; text-align: center; padding: 24px 20px 10px; }
+  .hero h1 {
+    font-family: var(--font-display); font-weight: 700; font-size: clamp(32px, 5.5vw, 54px);
+    margin: 0 0 8px;
+    background: linear-gradient(90deg, var(--violet), var(--blue), var(--teal), var(--pink));
+    background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: hue 8s ease-in-out infinite alternate;
+  }
+  @keyframes hue { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+  .hero .arrow { -webkit-text-fill-color: initial; color: var(--text); }
+  .hero p { color: var(--text-soft); font-size: 13px; max-width: 380px; margin: 0 auto; }
+
+  .stage {
+    position: relative; z-index: 1;
+    min-height: 68vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 30px 20px 60px;
+  }
+
+  /* ---------- Ticket ---------- */
+  .ticket {
+    width: 100%; max-width: 380px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(18px);
+    border-radius: 22px;
+    overflow: visible;
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,0.6);
+  }
+  .ticket-stub { padding: 26px 26px 20px; }
+  .ticket-stub .tag { font-size: 10.5px; color: var(--text-soft); margin-bottom: 10px; display: flex; justify-content: space-between; }
+  .ticket-stub .amount-row { display: flex; align-items: baseline; gap: 10px; }
+  .ticket-stub input[type="number"] {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    font-family: var(--font-mono); font-size: 30px; color: var(--text);
+  }
+  .ticket-stub input::placeholder { color: rgba(245,243,255,0.3); }
+  .token-tag {
+    flex: none; font-size: 12.5px; font-weight: 600; padding: 6px 12px;
+    border-radius: 999px; background: linear-gradient(135deg, var(--violet), var(--teal)); color: #0b0d17;
+  }
+
+  .perf {
+    position: relative;
+    display: flex; align-items: center;
+    padding: 0 26px;
+  }
+  .perf::before, .perf::after {
+    content: ""; flex: 1; height: 0; border-top: 2px dashed var(--line);
+  }
+  .perf-notch-l, .perf-notch-r {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 24px; border-radius: 50%; background: var(--bg);
+  }
+  .perf-notch-l { left: -12px; }
+  .perf-notch-r { right: -12px; }
+  .flip-btn {
+    flex: none; width: 34px; height: 34px; margin: 0 10px; border-radius: 50%;
+    border: 1px solid var(--glass-border); background: var(--bg);
+    color: var(--teal); cursor: pointer; font-size: 15px;
+  }
+
+  .ticket-settings { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-soft); padding: 4px 26px 0; }
+  .ticket-settings input {
+    width: 40px; font-family: var(--font-mono); background: transparent;
+    border: none; border-bottom: 1px solid var(--line); color: var(--text); text-align: right; font-size: 12px;
+  }
+
+  .ticket-action { padding: 18px 26px 26px; }
+  .go-btn {
+    width: 100%; padding: 15px; border: none; border-radius: 14px;
+    background: linear-gradient(135deg, var(--violet), var(--blue), var(--teal));
+    background-size: 200% 100%;
+    color: white; font-family: var(--font-mono); font-weight: 600; font-size: 14px; cursor: pointer;
+    transition: background-position .3s;
+  }
+  .go-btn:hover { background-position: 100% 0; }
+  .go-btn:disabled { background: var(--glass); color: var(--text-soft); cursor: not-allowed; }
+
+  .status { margin-top: 12px; font-size: 12.5px; min-height: 16px; text-align: center; }
+  .status.ok { color: var(--moss); }
+  .status.err { color: var(--rust); }
+
+  .stat-line { display: flex; justify-content: center; gap: 26px; margin-top: 18px; font-size: 11px; color: var(--text-soft); }
+  .stat-line b { color: var(--text); font-weight: 600; }
+
+  /* ---------- Feedback side drawer ---------- */
+  .fb-tab {
+    position: fixed; top: 50%; right: 0; transform: translateY(-50%);
+    z-index: 20;
+    background: linear-gradient(135deg, var(--violet), var(--pink));
+    color: white; border: none; cursor: pointer;
+    font-family: var(--font-mono); font-weight: 600; font-size: 12.5px;
+    padding: 14px 10px;
+    border-radius: 10px 0 0 10px;
+    writing-mode: vertical-rl;
+    letter-spacing: 1px;
+  }
+  .fb-tab:hover { filter: brightness(1.1); }
+
+  .fb-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 25;
+  }
+  .fb-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .fb-drawer {
+    position: fixed; top: 0; right: 0; height: 100vh; width: min(380px, 92vw);
+    background: #12142a;
+    border-left: 1px solid var(--glass-border);
+    transform: translateX(100%);
+    transition: transform .35s ease;
+    z-index: 30;
+    padding: 26px 24px;
+    overflow-y: auto;
+  }
+  .fb-drawer.open { transform: translateX(0); }
+
+  .fb-drawer-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .fb-drawer-head h2 { font-family: var(--font-display); font-size: 20px; margin: 0; }
+  .fb-close { background: none; border: none; color: var(--text-soft); font-size: 20px; cursor: pointer; }
+  .fb-close:hover { color: var(--text); }
+  .fb-sub { font-size: 12px; color: var(--text-soft); line-height: 1.5; margin: 0 0 20px; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 11px; color: var(--text-soft); margin-bottom: 6px; }
+  .field input[type="text"], .field select, .field textarea {
+    width: 100%; font-family: var(--font-mono); font-size: 13px; color: var(--text);
+    background: rgba(255,255,255,0.05); border: 1px solid var(--line);
+    border-radius: 12px; padding: 10px 12px; outline: none;
+  }
+  .field select option { background: #14162a; }
+  .field textarea { resize: vertical; min-height: 64px; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--teal); }
+
+  .stars { display: flex; gap: 6px; }
+  .stars button { background: none; border: none; font-size: 19px; cursor: pointer; color: var(--line); padding: 0; }
+  .stars button.filled { color: var(--pink); }
+
+  .fb-actions { display: flex; gap: 10px; }
+  .fb-actions .go-btn { margin-top: 0; }
+  .ghost-btn {
+    flex: none; background: transparent; border: 1px solid var(--glass-border); color: var(--text-soft);
+    font-family: var(--font-mono); font-size: 12px; padding: 12px 14px; border-radius: 14px; cursor: pointer;
+  }
+  .ghost-btn:hover { border-color: var(--text-soft); color: var(--text); }
+
+  .fb-list { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .fb-list-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .fb-list-head h3 { font-family: var(--font-mono); font-size: 11px; color: var(--text-soft); font-weight: 600; margin: 0; }
+  .fb-empty { font-size: 12px; color: var(--text-soft); font-style: italic; }
+  .fb-entry { padding: 12px 0; border-bottom: 1px dashed var(--line); }
+  .fb-entry-top { display: flex; justify-content: space-between; font-size: 12.5px; }
+  .fb-entry-name { font-weight: 600; }
+  .fb-entry-meta { font-size: 10.5px; color: var(--text-soft); margin-top: 3px; }
+  .fb-entry-comment { font-size: 12px; margin-top: 5px; line-height: 1.5; }
+  .fb-entry-remove { background: none; border: none; color: var(--text-soft); font-size: 10.5px; cursor: pointer; text-decoration: underline; padding: 0; margin-top: 6px; }
+  .fb-entry-remove:hover { color: var(--rust); }
+  .fb-stars-static { color: var(--pink); font-size: 11px; letter-spacing: 1px; }
+
+  footer { position: relative; z-index: 1; text-align: center; color: var(--text-soft); font-size: 10.5px; padding-bottom: 30px; }
+  .confetti-piece { position: fixed; top: -20px; z-index: 50; border-radius: 3px; pointer-events: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-blobs" aria-hidden="true">
+  <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="blob b4"></span>
+</div>
+
+<nav class="pillnav">
+  <span class="brand-mark">BA</span>
+  <button class="connect-pill" id="connectBtn">Connect wallet</button>
+</nav>
+
+<header class="hero">
+  <h1>Bavani <span class="arrow">⇄</span> BA</h1>
+</header>
+
+<div class="stage">
+  <div class="ticket">
+    <div class="ticket-stub">
+      <div class="tag"><span>You pay</span><span id="fromBalance"></span></div>
+      <div class="amount-row">
+        <input id="fromAmount" type="number" placeholder="0.0" min="0" />
+        <span class="token-tag" id="fromToken">ETH</span>
+      </div>
+    </div>
+
+    <div class="perf">
+      <span class="perf-notch-l"></span>
+      <span class="rule" style="flex:1;border-top:2px dashed var(--line);"></span>
+      <button class="flip-btn" id="flipBtn" title="Flip direction" aria-label="Flip swap direction">⇅</button>
+      <span class="rule" style="flex:1;border-top:2px dashed var(--line);"></span>
+      <span class="perf-notch-r"></span>
+    </div>
+
+    <div class="ticket-stub" style="padding-top:20px;">
+      <div class="tag"><span>You receive</span><span id="toBalance"></span></div>
+      <div class="amount-row">
+        <input id="toAmount" type="number" placeholder="0.0" disabled />
+        <span class="token-tag" id="toToken">BA</span>
+      </div>
+    </div>
+
+    <div class="ticket-settings">
+      <span>Slippage tolerance</span>
+      <span><input id="slippage" type="number" value="1" step="0.1" min="0.1" /> %</span>
+    </div>
+
+    <div class="ticket-action">
+      <button class="go-btn" id="swapBtn" disabled>Connect wallet to swap</button>
+      <div class="status" id="status"></div>
+      <div class="stat-line">
+        <span>Rate: <b id="rateValue">—</b></span>
+        <span>Pool: <b id="reserves">—</b></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feedback side drawer -->
+<button class="fb-tab" id="fbTab">Feedback</button>
+<div class="fb-overlay" id="fbOverlay"></div>
+<aside class="fb-drawer" id="fbDrawer">
+  <div class="fb-drawer-head">
+    <h2>Feedback</h2>
+    <button class="fb-close" id="fbClose" aria-label="Close feedback">×</button>
+  </div>
+  <p class="fb-sub">Tried a swap? Let us know how it went. Your answer is saved in this browser and stays here even if you refresh the page 📥🔄!</p>
+
+  <form id="fbForm">
+    <div class="field">
+      <label for="fbName">Your name</label>
+      <input type="text" id="fbName" placeholder="e.g. Karthik" required />
+    </div>
+    <div class="field">
+      <label for="fbWallet">Wallet address (optional)</label>
+      <input type="text" id="fbWallet" placeholder="0x..." />
+    </div>
+    <div class="field">
+      <label for="fbSwapType">Which swap did you try?</label>
+      <select id="fbSwapType">
+        <option value="ETH → BA">ETH → BA</option>
+        <option value="BA → ETH">BA → ETH</option>
+        <option value="Both directions">Both directions</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Rating</label>
+      <div class="stars" id="fbStars">
+        <button type="button" data-val="1">★</button>
+        <button type="button" data-val="2">★</button>
+        <button type="button" data-val="3">★</button>
+        <button type="button" data-val="4">★</button>
+        <button type="button" data-val="5">★</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="fbComment">What was easy, confusing, or broken?</label>
+      <textarea id="fbComment" placeholder="Notes on speed, clarity, errors..."></textarea>
+    </div>
+    <div class="fb-actions">
+      <button type="submit" class="go-btn">Save feedback</button>
+      <button type="button" class="ghost-btn" id="fbCopyBtn">Copy for report</button>
+    </div>
+  </form>
+
+  <div class="fb-list">
+    <div class="fb-list-head">
+      <h3 id="fbCount">0 entries logged</h3>
+      <button type="button" class="fb-entry-remove" id="fbClearBtn">Clear all</button>
+    </div>
+    <div id="fbListBody"></div>
+  </div>
+  <div class="status" id="fbStatus"></div>
+</aside>
+
+<script>
+  // ====== EDIT THESE AFTER YOU DEPLOY (from scripts/deploy.js output) ======
+  const TOKEN_ADDRESS = "0x5df2424AefD4408E46Ec5002ccF52037Dad1b723";
+  const POOL_ADDRESS  = "0x429e47Bc808883711EcB7700a380843d519d1dC1";
+  const SEPOLIA_CHAIN_ID = 11155111n;
+  // ===========================================================================
+
+  const TOKEN_ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function approve(address spender, uint256 amount) returns (bool)",
+    "function allowance(address owner, address spender) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function symbol() view returns (string)"
+  ];
+  const POOL_ABI = [
+    "function reserveToken() view returns (uint256)",
+    "function reserveETH() view returns (uint256)",
+    "function getTokenOutForETH(uint256 ethIn) view returns (uint256)",
+    "function getETHOutForToken(uint256 tokenIn) view returns (uint256)",
+    "function swapETHForToken(uint256 minTokenOut) payable",
+    "function swapTokenForETH(uint256 tokenIn, uint256 minEthOut)"
+  ];
+
+  let provider, signer, userAddress, token, pool;
+  let direction = "ETH_TO_BA";
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("status");
+
+  function setStatus(msg, type) { statusEl.textContent = msg; statusEl.className = "status " + (type || ""); }
+  function short(addr) { return addr ? addr.slice(0, 6) + "..." + addr.slice(-4) : ""; }
+
+  async function connectWallet() {
+    if (!window.ethereum) { setStatus("No wallet found. Please install MetaMask.", "err"); return; }
+    try {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      const network = await provider.getNetwork();
+      if (network.chainId !== SEPOLIA_CHAIN_ID) {
+        setStatus("Please switch MetaMask to the Sepolia test network.", "err");
+        return;
+      }
+      token = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer);
+      pool = new ethers.Contract(POOL_ADDRESS, POOL_ABI, signer);
+
+      $("connectBtn").textContent = short(userAddress);
+      $("swapBtn").disabled = false;
+      $("swapBtn").textContent = "Swap";
+      setStatus("Wallet connected.", "ok");
+      if (!$("fbWallet").value) $("fbWallet").value = userAddress;
+
+      await refreshBalances();
+      await refreshReserves();
+    } catch (err) {
+      console.error(err);
+      setStatus(err.message || "Failed to connect wallet.", "err");
+    }
+  }
+
+  async function refreshBalances() {
+    if (!userAddress) return;
+    const ethBal = await provider.getBalance(userAddress);
+    const baBal = await token.balanceOf(userAddress);
+    const ethStr = Number(ethers.formatEther(ethBal)).toFixed(4) + " ETH";
+    const baStr = Number(ethers.formatEther(baBal)).toFixed(2) + " BA";
+    if (direction === "ETH_TO_BA") {
+      $("fromBalance").textContent = ethStr;
+      $("toBalance").textContent = baStr;
+    } else {
+      $("fromBalance").textContent = baStr;
+      $("toBalance").textContent = ethStr;
+    }
+  }
+
+  async function refreshReserves() {
+    if (!pool) return;
+    try {
+      const rEth = await pool.reserveETH();
+      const rTok = await pool.reserveToken();
+      const ethNum = Number(ethers.formatEther(rEth));
+      const tokNum = Number(ethers.formatEther(rTok));
+      $("reserves").textContent = ethNum.toFixed(3) + " / " + tokNum.toFixed(0);
+      $("rateValue").textContent = ethNum > 0 ? "1 ETH ≈ " + (tokNum / ethNum).toFixed(1) + " BA" : "—";
+    } catch (e) { $("reserves").textContent = "—"; }
+  }
+
+  function flipDirection() {
+    direction = direction === "ETH_TO_BA" ? "BA_TO_ETH" : "ETH_TO_BA";
+    $("fromToken").textContent = direction === "ETH_TO_BA" ? "ETH" : "BA";
+    $("toToken").textContent = direction === "ETH_TO_BA" ? "BA" : "ETH";
+    $("fromAmount").value = ""; $("toAmount").value = "";
+    refreshBalances();
+  }
+
+  async function updateEstimate() {
+    const val = $("fromAmount").value;
+    if (!pool || !val || Number(val) <= 0) { $("toAmount").value = ""; return; }
+    try {
+      const amountIn = ethers.parseEther(val);
+      const out = direction === "ETH_TO_BA"
+        ? await pool.getTokenOutForETH(amountIn)
+        : await pool.getETHOutForToken(amountIn);
+      $("toAmount").value = Number(ethers.formatEther(out)).toFixed(6);
+    } catch (e) { $("toAmount").value = ""; }
+  }
+
+  function celebrate() {
+    const colors = ["#8b5cf6", "#3b82f6", "#22d3ee", "#f472b6"];
+    for (let i = 0; i < 24; i++) {
+      const p = document.createElement("div");
+      p.className = "confetti-piece";
+      p.style.left = Math.random() * 100 + "vw";
+      p.style.width = p.style.height = 6 + Math.random() * 5 + "px";
+      p.style.background = colors[i % colors.length];
+      p.style.transform = `rotate(${Math.random() * 360}deg)`;
+      document.body.appendChild(p);
+      const duration = 1400 + Math.random() * 900;
+      p.animate(
+        [{ transform: p.style.transform + " translateY(0)", opacity: 1 },
+         { transform: `rotate(${Math.random()*720}deg) translateY(100vh)`, opacity: 0 }],
+        { duration, easing: "ease-in" }
+      ).onfinish = () => p.remove();
+    }
+  }
+
+  async function doSwap() {
+    const val = $("fromAmount").value;
+    if (!val || Number(val) <= 0) { setStatus("Enter an amount first.", "err"); return; }
+    const slippagePct = Number($("slippage").value || "1");
+    $("swapBtn").disabled = true;
+    try {
+      const amountIn = ethers.parseEther(val);
+      if (direction === "ETH_TO_BA") {
+        setStatus("Estimating output...", "");
+        const expectedOut = await pool.getTokenOutForETH(amountIn);
+        const minOut = expectedOut - (expectedOut * BigInt(Math.floor(slippagePct * 100))) / 10000n;
+        setStatus("Confirm the swap in your wallet...", "");
+        const tx = await pool.swapETHForToken(minOut, { value: amountIn });
+        setStatus("Swap sent, waiting for confirmation...", "");
+        await tx.wait();
+      } else {
+        setStatus("Checking token approval...", "");
+        const allowance = await token.allowance(userAddress, POOL_ADDRESS);
+        if (allowance < amountIn) {
+          setStatus("Approve the pool to spend your BA (confirm in wallet)...", "");
+          const approveTx = await token.approve(POOL_ADDRESS, amountIn);
+          await approveTx.wait();
+        }
+        const expectedOut = await pool.getETHOutForToken(amountIn);
+        const minOut = expectedOut - (expectedOut * BigInt(Math.floor(slippagePct * 100))) / 10000n;
+        setStatus("Confirm the swap in your wallet...", "");
+        const tx = await pool.swapTokenForETH(amountIn, minOut);
+        setStatus("Swap sent, waiting for confirmation...", "");
+        await tx.wait();
+      }
+      setStatus("Swap successful.", "ok");
+      celebrate();
+      $("fromAmount").value = ""; $("toAmount").value = "";
+      await refreshBalances();
+      await refreshReserves();
+    } catch (err) {
+      console.error(err);
+      setStatus(err.shortMessage || err.message || "Swap failed.", "err");
+    } finally { $("swapBtn").disabled = false; }
+  }
+
+  $("connectBtn").addEventListener("click", connectWallet);
+  $("flipBtn").addEventListener("click", flipDirection);
+  $("fromAmount").addEventListener("input", updateEstimate);
+  $("swapBtn").addEventListener("click", doSwap);
+  if (window.ethereum) {
+    window.ethereum.on("accountsChanged", () => window.location.reload());
+    window.ethereum.on("chainChanged", () => window.location.reload());
+  }
+
+  // ---------------- Feedback drawer open/close ----------------
+  const fbDrawer = $("fbDrawer");
+  const fbOverlay = $("fbOverlay");
+  function openDrawer() { fbDrawer.classList.add("open"); fbOverlay.classList.add("open"); }
+  function closeDrawer() { fbDrawer.classList.remove("open"); fbOverlay.classList.remove("open"); }
+  $("fbTab").addEventListener("click", openDrawer);
+  $("fbClose").addEventListener("click", closeDrawer);
+  fbOverlay.addEventListener("click", closeDrawer);
+
+  // ---------------- Feedback (persists locally via localStorage) ----------------
+  const FB_KEY = "bavaniSwapFeedback";
+  let fbRating = 0;
+  function loadFeedback() { try { const r = localStorage.getItem(FB_KEY); return r ? JSON.parse(r) : []; } catch (e) { return []; } }
+  function saveFeedback(entries) { try { localStorage.setItem(FB_KEY, JSON.stringify(entries)); } catch (e) { console.error(e); } }
+  function setFbStatus(msg, type) { const el = $("fbStatus"); el.textContent = msg; el.className = "status " + (type || ""); }
+  function renderStarsStatic(n) { return "★".repeat(n) + "☆".repeat(5 - n); }
+
+  function renderFeedback() {
+    const entries = loadFeedback();
+    $("fbCount").textContent = entries.length + (entries.length === 1 ? " entry logged" : " entries logged");
+    const body = $("fbListBody");
+    body.innerHTML = "";
+    if (entries.length === 0) { body.innerHTML = '<p class="fb-empty">No feedback logged yet.</p>'; return; }
+    entries.slice().reverse().forEach((entry) => {
+      const div = document.createElement("div");
+      div.className = "fb-entry";
+      const date = new Date(entry.date);
+      const dateStr = isNaN(date) ? "" : date.toLocaleDateString();
+      div.innerHTML = `
+        <div class="fb-entry-top"><span class="fb-entry-name"></span><span class="fb-stars-static"></span></div>
+        <div class="fb-entry-meta"></div>
+        <div class="fb-entry-comment"></div>
+        <button type="button" class="fb-entry-remove">Remove</button>`;
+      div.querySelector(".fb-entry-name").textContent = entry.name || "Anonymous";
+      div.querySelector(".fb-stars-static").textContent = renderStarsStatic(entry.rating || 0);
+      div.querySelector(".fb-entry-meta").textContent = [entry.swapType, entry.wallet ? short(entry.wallet) : null, dateStr].filter(Boolean).join(" · ");
+      div.querySelector(".fb-entry-comment").textContent = entry.comment || "";
+      div.querySelector(".fb-entry-remove").addEventListener("click", () => {
+        saveFeedback(loadFeedback().filter((e) => e.id !== entry.id));
+        renderFeedback();
+      });
+      body.appendChild(div);
+    });
+  }
+
+  $("fbStars").querySelectorAll("button").forEach((star) => {
+    star.addEventListener("click", () => {
+      fbRating = Number(star.dataset.val);
+      $("fbStars").querySelectorAll("button").forEach((s) => s.classList.toggle("filled", Number(s.dataset.val) <= fbRating));
+    });
+  });
+
+  $("fbForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = $("fbName").value.trim();
+    if (!name) { setFbStatus("Enter your name first.", "err"); return; }
+    const entry = {
+      id: Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+      name, wallet: $("fbWallet").value.trim(), swapType: $("fbSwapType").value,
+      rating: fbRating, comment: $("fbComment").value.trim(), date: new Date().toISOString(),
+    };
+    const entries = loadFeedback(); entries.push(entry); saveFeedback(entries);
+    $("fbForm").reset(); fbRating = 0;
+    $("fbStars").querySelectorAll("button").forEach((s) => s.classList.remove("filled"));
+    setFbStatus("Feedback saved to this browser.", "ok");
+    renderFeedback();
+  });
+
+  $("fbClearBtn").addEventListener("click", () => {
+    if (loadFeedback().length === 0) return;
+    if (confirm("Remove all saved feedback entries? This can't be undone.")) {
+      saveFeedback([]); renderFeedback(); setFbStatus("All feedback cleared.", "");
+    }
+  });
+
+  $("fbCopyBtn").addEventListener("click", async () => {
+    const entries = loadFeedback();
+    if (entries.length === 0) { setFbStatus("No feedback saved yet to copy.", "err"); return; }
+    let md = "## 6. Feedback Received\n\n";
+    entries.forEach((e, i) => {
+      const date = new Date(e.date);
+      const dateStr = isNaN(date) ? "" : date.toLocaleDateString();
+      md += `**Entry ${i + 1} — ${e.name}** (${dateStr})\n- Swap tried: ${e.swapType}\n`;
+      if (e.wallet) md += `- Wallet: ${e.wallet}\n`;
+      md += `- Rating: ${renderStarsStatic(e.rating || 0)} (${e.rating || 0}/5)\n`;
+      if (e.comment) md += `- Comments: ${e.comment}\n`;
+      md += "\n";
+    });
+    try { await navigator.clipboard.writeText(md); setFbStatus("Copied — paste this into FEEDBACK_REPORT.md.", "ok"); }
+    catch (err) { setFbStatus("Couldn't copy automatically; select and copy manually.", "err"); }
+  });
+
+  renderFeedback();
+</script>
+
+</body>
+</html>
